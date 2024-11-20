@@ -1,62 +1,74 @@
---1
-CREATE DATABASE lab8;
-
---2
-CREATE TABLE salesman(
-    salesman_id INTEGER,
-    name VARCHAR(255),
-    city VARCHAR(255),
-    comission DOUBLE PRECISION
+create table customers(
+    customer_id int primary key,
+    cust_name varchar(255),
+    city varchar(255),
+    grade int,
+    salesman_id int
 );
-
-CREATE TABLE customers(
-    customer_id INTEGER,
-    cust_name VARCHAR(255),
-    city VARCHAR(255),
-    grade INTEGER,
-    salesman_id INTEGER REFERENCES salesmen
+create table orders(
+    ord_no int primary key,
+    purch_amt float,
+    ord_date date,
+    customer_id int,
+    salesman_id int
 );
-
-CREATE TABLE orders(
-    ord_no INTEGER,
-    purch_amt DOUBLE PRECISION,
-    ord_date DATE,
-    customer_id INTEGER REFERENCES customers,
-    salesman_id INTEGER REFERENCES salesmen
+create table salesman(
+    salesman_id int primary key,
+    name varchar(255),
+    city varchar(255),
+    commission float
 );
+insert into customers (customer_id,cust_name,city,grade,salesman_id) values
+(3002,'Nick Rimando','New York',100,5001 ),
+(3005,'Graham Zusi','California',200,5002),
+(3001,'Brad Guzan','London',100,5005),
+(3004,'Fabian Johns','Paris',300,5006),
+(3007,'Brad Davis','New York',200,5001),
+(3009,'Geoff Camero','Berlin',100,5003),
+(3008,'Julian Green','London',300,5002);
 
+insert into orders (ord_no, purch_amt, ord_date, customer_id, salesman_id) values
+(70001, 150.50, '2012-10-05', 3005, 5002),
+(70009, 270.65, '2012-09-10', 3001, 5005),
+(70002, 65.26, '2012-10-05', 3002, 5001),
+(70004, 110.50, '2012-08-17', 3009, 5003),
+(70007, 948.50, '2012-09-10', 3005, 5002),
+(70005, 2400.60, '2012-07-27', 3007, 5001),
+(70008, 5760.00, '2012-09-10', 3002, 5001);
+insert into salesman (salesman_id, name, city, commission) values
+(5001, 'James Hoog', 'New York', 0.15),
+(5002, 'Nail Knite', 'Paris', 0.13),
+(5005, 'Pit Alex', 'London', 0.11),
+(5006, 'Mc Lyon', 'Paris', 0.14),
+(5003, 'Lauson Hen', 'London', 0.12),
+(5007, 'Paul Adam', 'Rome', 0.13);
 
---3
-CREATE ROLE junior_dev LOGIN;
+create role junior_dev login;
 
---4
-CREATE VIEW from_ny as
-    SELECT * FROM salesmen WHERE city = 'New York';
+create view ny_salesmen as select * from salesman where city = 'new york';
 
---5 Create a view that shows for each order the salesman and customer by name. Grant all privileges to «junior_dev»
-CREATE VIEW orders AS
-    SELECT  o.ord_no, o.purch_amt, o.ord_date FROM orders o
-    JOIN customers c ON c.customer_id = o.customer_id
-    JOIN salesman s ON s.salesman_id = c.salesman_id;
+create view order_details as
+select orders.ord_no, orders.ord_date, orders.purch_amt,salesman.name as salesman_name, customers.cust_name
+as customer_name from orders
+join salesman on orders.salesman_id = salesman.salesman_id
+join customers on orders.customer_id = customers.customer_id;
+grant all privileges on order_details to junior_dev;
 
-GRANT ALL PRIVILEGES ON orders TO junior_dev;
---6 Create a view that shows all of the customers who have the highest grade. Grant only select statements to «junior_dev»
-CREATE VIEW top_customer AS
-    SELECT * FROM customers
-    WHERE grade = (SELECT MAX(grade) FROM customers);
+create view top_customers as
+select * from customers
+where grade = (select max(grade) from customers);
+grant select on top_customers to junior_dev;
 
-GRANT SELECT ON top_customer TO junior_dev;
---7 Create a view that shows the number of the salesman in each city.
-CREATE VIEW numbers AS
-    SELECT city, COUNT(*) AS salesmans_count FROM salesman
-    GROUP BY city;
---8 Create a view that shows each salesman with more than one customers.
-CREATE VIEW salesmans_more_than_one AS
-    SELECT s.name, s.city, COUNT(c.customer_id) as customer_count FROM salesman s
-    JOIN customers c ON s.salesman_id = c.customer_id
-    GROUP BY s.name, s.city
-    HAVING COUNT(customer_id) > 1;
+create view salesman_count as
+select city, count(*) as num_salesmen
+from salesman
+group by city;
 
---9 Create role «intern» and give all privileges of «junior_dev».
-CREATE ROLE intern LOGIN;
-GRANT junior_dev to intern;
+create view multiple_customers as
+select salesman.salesman_id, salesman.name, count(customers.customer_id) as num_customers from salesman
+join customers on customers.city = salesman.city
+group by salesman.salesman_id, salesman.name
+having count(customers.customer_id) > 1;
+
+create role intern;
+grant junior_dev to intern;
